@@ -1,7 +1,7 @@
 const fs = require('node:fs'), path = require('node:path'), cp = require('node:child_process');
 process.chdir(path.resolve(__dirname, '..'));
 fs.mkdirSync('test-results', { recursive: true });
-const files = ['test-dice.cjs','test-bold-label.cjs','test-safety-conflicts.cjs'];
+const files = ['test-readme-examples.cjs','test-dice.cjs','test-bold-label.cjs','test-safety-conflicts.cjs'];
 if (process.argv.includes('--browser')) {
   cp.execFileSync(process.execPath,['scripts/build.cjs'],{stdio:'inherit'});
   files.push('test-idb-basic.cjs','test-idb-failures.cjs','test-idb-mutations.cjs','test-help.cjs','test-role-toolbar-fixed.cjs');
