@@ -79,6 +79,14 @@ function tagged(raw){
  const invalid={invalid:true,inputFormat:'tagged',reason:'日期时间或类型标签无效'};
  const direct=raw.match(/^\s*\[([A-Za-z]+)\]\s*(.*)$/u);
  if(direct){const type={say:'dialogue',emote:'action',party:'party',shout:'shout',yell:'yell'}[direct[1].toLowerCase()];return type?{date:'',time:'',tag:direct[1],type,rest:direct[2],inputFormat:'tagged'}:invalid;}
+ // A clock-only prefix uses the same type branches as dated/tag-only input.
+ const clock=raw.match(/^\s*\[([^\]]*)\]\s*\[([^\]]+)\]\s*(.*)$/u);
+ if(clock&&!/^\d{4}-/u.test(clock[1])){
+  const t=clock[1].match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/u);
+  const type={say:'dialogue',emote:'action',party:'party',shout:'shout',yell:'yell'}[clock[2].toLowerCase()];
+  if(!t||+t[1]>23||+t[2]>59||(t[3]!==undefined&&+t[3]>59)||!type)return invalid;
+  return {date:'',time:clock[1],tag:clock[2],type,rest:clock[3],inputFormat:'tagged'};
+ }
  if(!/^\s*\[\d{4}-/u.test(raw))return null;
  const m=raw.match(/^\s*\[(\d{4}-\d{2}-\d{2}) (\d{2}(?::\d{2})?)\]\s*\[([^\]]+)\]\s*(.*)$/u);if(!m)return invalid;
  const [y,mo,day]=m[1].split('-').map(Number),[h,mi=0]=m[2].split(':').map(Number),days=[31,(y%4===0&&(y%100!==0||y%400===0))?29:28,31,30,31,30,31,31,30,31,30,31];
