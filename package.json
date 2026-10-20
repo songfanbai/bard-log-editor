@@ -1,0 +1,18 @@
+{
+  "name": "bard-rp-log-editor",
+  "version": "1.1.5-rc.4",
+  "private": true,
+  "description": "离线中文 RP 日志编辑器",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node scripts/test.cjs",
+    "test:browser": "node scripts/test.cjs --browser",
+    "package": "python scripts/package.py"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

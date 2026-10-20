@@ -1,0 +1,26 @@
+# Only the reviewed application and documentation enter the repository.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/package.json
+!/package-lock.json
+!/app/
+!/scripts/
+!/tests/
+!/docs/
+!/examples/
+node_modules/
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.logproject.json
+*.logconfig.json
+*.zip
+*.docx
+*.log
+__pycache__/
+.DS_Store
+Thumbs.db
