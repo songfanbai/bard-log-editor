@@ -4,11 +4,13 @@
 
 ## 快速下载与使用
 
-**[下载单文件 HTML](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.4/bard-log-editor.html)** · [下载完整 ZIP（含说明和示例）](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.4/bard-log-editor-1.1.5-rc.4.zip)
+**[下载单文件 HTML](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.5/bard-log-editor.html)** · [下载完整 ZIP（含说明和示例）](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.5/bard-log-editor-1.1.5-rc.5.zip)
 
 下载 HTML 后，在电脑浏览器中打开即可离线使用，无需安装。GitHub 会转换中文附件文件名，因此直接下载名为 `bard-log-editor.html`；可在首次使用前改名为 `吟游诗人随手记·对话log编辑器.html`。ZIP 内已使用完整中文名，解压后打开即可。
 
 **导入 TXT → 检查“待确认” → 调整角色与排版 → 保存项目／导出 Word。**
+
+也可将 TXT 拖入窗口，选择“导入并替换”或“追加到当前日志”，取消不会改变项目。一次一个文件，支持 UTF-8（可带 BOM）。
 
 继续添加日志用“追加 TXT”；字体在常用设置，字号在高级设置。详细操作见右上角“使用帮助”。
 
@@ -60,7 +62,7 @@
 - **升级或改用本次新文件名前，先下载项目及界面配置备份**，在新版导入并核对，不要先清除旧数据。
 - 字体不会嵌入 Word；接收者未安装字体时，显示及分页可能不同。本机字体读取需浏览器支持并由用户授权，无法读取时可手动选字体。
 
-当前为 **1.1.5-rc.4 测试版**，不是正式稳定版。已知问题：不可信项目文件的安全校验尚不完整；超过 30 MiB 的项目无法重新导入。请只打开可信项目并控制规模。Windows / Chrome 离线运行已测试，其他平台、真实中文输入法及桌面 Word 字体分页尚未完整验收。详见[已知限制](docs/KNOWN_ISSUES.md)。
+当前为 **1.1.5-rc.5 测试版**，不是正式稳定版。已知问题：不可信项目文件的安全校验尚不完整；超过 30 MiB 的项目无法重新导入。请只打开可信项目并控制规模。Windows / Chrome 离线运行已测试，其他平台、真实中文输入法及桌面 Word 字体分页尚未完整验收。详见[已知限制](docs/KNOWN_ISSUES.md)。
 
 [使用说明](docs/使用说明.txt) · [开发与测试](docs/DEVELOPMENT.md) · [发布说明](docs/RELEASE_NOTES.md)
 

@@ -26,6 +26,37 @@ function ready(){if(!sameSource())return parseNow();return true;}
 function download(name,data,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 function jsonDownload(name,data){download(name,JSON.stringify(data,null,2),'application/json;charset=utf-8');}
 function pick(accept,callback){const input=document.createElement('input');input.type='file';input.accept=accept;input.onchange=async()=>{try{const f=input.files[0];if(!f)return;if(f.size>30*1024*1024)throw Error('文件超过 30 MB，请拆分后导入。');const text=new TextDecoder('utf-8',{fatal:true}).decode(await f.arrayBuffer()).replace(/^\uFEFF/,'');const apply=()=>runTask('导入文件',()=>callback(text,f));if(inlineDraft&&inlineDraft.text!==inlineDraft.original)protectDraft(apply);else await apply();}catch(e){alert('导入失败：'+e.message);}};input.click();}
+async function readLogFile(file){
+ if(!/\.txt$/i.test(file.name))throw Error('请选择 TXT 文件');
+ if(file.size>30*1024*1024)throw Error('文件超过 30 MB，请拆分后导入');
+ const bytes=await file.arrayBuffer();
+ let text;try{text=new TextDecoder('utf-8',{fatal:true}).decode(bytes).replace(/^\uFEFF/,'');}catch{throw Error('无法读取编码，请将文件另存为 UTF-8');}
+ if(!text.trim())throw Error('TXT 文件为空');
+ return text;
+}
+function importLogText(text,mode){
+ if(mode==='replace'&&!guard())return;
+ // Parse on an isolated project; failed parsing never partially changes current work.
+ const next=mode==='append'?snapshot():C.fresh();
+ if(mode==='append'&&!sameSource()){
+  const bad=C.conflicts(next,$('source').value);
+  if(bad.length&&!confirm('原文变化影响了 '+bad.length+' 条记录的已保存处理。继续追加将重新解析原文并放弃受影响的处理；取消可保留当前项目。'))return;
+  bad.forEach(k=>{delete next.corrections[k];if(next.deleted)delete next.deleted[k];if(next.referenceBindings)delete next.referenceBindings[k];});
+  C.parse(next,$('source').value);
+ }
+ const source=mode==='append'?next.source+(next.source&&!/[\r\n]$/.test(next.source)?'\n':'')+text:text;
+ C.parse(next,source);
+ if(inlineDraft)cancelInline();
+ remember();state=next;
+ if(mode==='replace'){roleFilter=new Set();roleJumpCursors.clear();clearJumpHighlight();}
+ setSource(source);page=0;mark();render();toast(mode==='append'?'已追加日志，保留角色映射':'已导入日志');
+}
+function applyLogText(text,mode){protectDraft(()=>runTask('导入 TXT',()=>importLogText(text,mode)));}
+function pickLog(mode){
+ const input=document.createElement('input');input.type='file';input.accept='.txt';
+ input.onchange=async()=>{try{if(input.files[0])applyLogText(await readLogFile(input.files[0]),mode);}catch(e){toast('导入失败：'+e.message);}};
+ input.click();
+}
 function setSource(source){state.draft=source;$('source').value=source;}
 function counts(){const n={dialogue:0,party:0,action:0,shout:0,yell:0,dice:0,pending:0,plain:0};C.activeRecords(state).forEach(r=>n[r.type]++);return n;}
 function label(r){return r.display+(r.server?' · '+r.server:' · 未设服务器');}
@@ -86,7 +117,7 @@ $('source').addEventListener('input',()=>{state.draft=$('source').value;mark();$
 $('parse').onclick=parseNow;$('pending').onclick=()=>{if(ready())pendingList();};$('knownRoles').onclick=roleListDialog;
 $('modalBody').onclick=e=>{if(e.target.closest('#pendingMore')){const n=$('modalBody').querySelectorAll('.pendingItem').length;const scroll=$('modalBody').scrollTop;pendingList(n+300);$('modalBody').scrollTop=scroll;return;}const button=e.target.closest('[data-pending-action]');if(!button)return;const id=button.closest('[data-pending-id]').dataset.pendingId;if(button.dataset.pendingAction==='jump')jumpPending(id);else{const r=pendingTarget(id);if(r){if(r.type!=='pending'){pendingList();toast('此条已完成修正，列表已更新');}else editRecord(r.index);}}};$('closeModal').onclick=close;
 $('sample').onclick=()=>{if(!guard())return;remember();state=C.fresh();roleFilter=new Set();roleJumpCursors.clear();clearJumpHighlight();setSource(SAMPLE);C.parse(state,SAMPLE);page=0;mark();render();toast(uiText('message.953fab33','已载入示例'));};
-$('importTxt').onclick=()=>pick('.txt',text=>{if(!guard())return;const next=C.fresh();C.parse(next,text);remember();state=next;roleFilter=new Set();roleJumpCursors.clear();clearJumpHighlight();setSource(text);page=0;mark();render();toast(uiText('message.89987236','已导入日志'));});
+$('importTxt').onclick=()=>pickLog('replace');
 $('saveProject').onclick=()=>{if(inlineDraft&&inlineDraft.text!==inlineDraft.original){toast('请先保存或取消正文编辑，再保存项目');return;}C.refreshReferences(state);state.draft=$('source').value;clearSaveRequest();dirty=true;$('saveStatus').textContent='正在准备项目下载';const saved=JSON.stringify(state);try{jsonDownload('吟游诗人随手记.logproject.json',state);}catch(e){$('saveStatus').textContent='项目下载失败，尚未保存';throw e;}pendingProjectSave=saved;confirmProjectSaved.hidden=false;$('saveStatus').textContent='下载待确认，请检查文件后点击“确认已保存”';window.ProjectRecovery?.schedule('metadata');toast('项目下载已发起，请检查文件是否保存成功');};
 
 $('openProject').onclick=()=>pick('.json,.logproject',text=>{const loaded=C.openProject(JSON.parse(text));if(!guard())return;remember();clearSaveRequest();state=loaded;roleFilter=new Set();roleJumpCursors.clear();clearJumpHighlight();setSource(state.draft);page=0;dirty=false;render();$('saveStatus').textContent='已打开独立项目文件';window.ProjectRecovery?.schedule('project');if(state.migrationNotes?.length)alert('项目更新说明：\n'+state.migrationNotes.join('\n'));});
@@ -101,7 +132,7 @@ $('autoColors').onclick=()=>{try{const colors=C.autoPalette(state);if(!colors.le
 $('settingsPanel').addEventListener('input',e=>{const el=e.target,path=el.dataset.setting;if(!path)return;if(el.type==='number'&&!el.checkValidity())return;const value=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;if(path==='font'&&!value.trim())return;const candidate=C.clone(state.settings),keys=path.split('.');if(keys.length===2)candidate[keys[0]][keys[1]]=value;else candidate[path]=value;try{C.validateSettings(candidate);}catch{return;}if(!editSnapshot)editSnapshot=snapshot();state.settings=candidate;if(path.endsWith('Uniform'))document.querySelectorAll('[data-setting="'+path+'"]').forEach(other=>{if(other!==el)other.value=value;});mark();renderPreview();});
 $('settingsPanel').addEventListener('change',e=>{if(editSnapshot){remember(editSnapshot);editSnapshot=null;mark();}const key=e.target.dataset.setting;if(key&&key.endsWith('Uniform')){if(!/^#[\da-f]{6}$/i.test(e.target.value))toast(uiText('message.e7c6f22c','请输入 #RRGGBB 格式的颜色'));document.querySelectorAll('[data-setting="'+key+'"]').forEach(el=>el.value=state.settings[key]);}});
 $('saveConfig').onclick=()=>jsonDownload('吟游诗人配色排版.logconfig.json',{format:'cn-rp-log-config',version:3,settings:state.settings,roles:state.roles.map(r=>{const target=C.resolve(state,r.id);return{name:r.name,server:r.server,display:target.display,color:target.color};})});$('loadConfig').onclick=()=>pick('.json',configImport);
-$('help').onclick=()=>{modal('使用帮助',"<section class=\"helpIntro\"><h3>简介</h3><p>用于整理 RP 日志，支持角色识别、改名、配色、正文编辑和 Word 导出。日志在本地处理，不上传服务器。</p></section>\n<section><h3>快速开始</h3><ol class=\"helpSteps\">\n<li><strong>导入日志。</strong>点击“导入 TXT”；接着添加日志用“追加 TXT”，避免替换当前内容。也可粘贴到原始日志后点击“解析日志”。</li>\n<li><strong>检查识别。</strong>查看预览；打开“待确认”，展开记录，用“跳转至此条”定位，或点“确认与修正”。</li>\n<li><strong>整理角色。</strong>在角色列表修改名称和颜色，在常用设置选择要显示的记录类型。</li>\n<li><strong>设置文档。</strong>常用设置选字体，高级设置调字号、间距及页面；顶部可填写“导出标题”。</li>\n<li><strong>保存与导出。</strong>先“保存项目”并核对下载，再“导出 Word”。以后用“打开项目”继续编辑。</li>\n</ol></section>\n<details class=\"helpChapter\"><summary>常用操作</summary><ul>\n<li><strong>改名：</strong>点击角色名称，在原处修改；已关联的正文名字同步更新。Enter 保存，Esc 取消，失焦保存有效名称。</li>\n<li><strong>配色：</strong>点击角色色块，选择常用色或自定义颜色；确认应用，取消恢复原色。</li>\n<li><strong>编辑正文：</strong>双击正文；Enter 保存、Shift+Enter 换行、Esc 取消，也可点击保存或取消按钮。</li>\n<li><strong>记录菜单：</strong>右键记录（或点记录的省略号），修正类型与角色、调整正文角色关联或删除此条。</li>\n<li><strong>角色菜单：</strong>右键角色（或点其省略号），可“跳转至发言”或“删除角色”；重复跳转依次定位下一条，遵循当前显示范围。</li>\n<li><strong>筛选角色：</strong>预览工具栏点击“筛选角色”，可多选；清除选择恢复全部，只影响浏览。</li>\n<li><strong>隐藏角色：</strong>点击眼睛图标，不显示、不导出该角色作为主体的记录，并锁定其操作；再次点击恢复。其他记录正文中的提及不受影响。</li>\n<li><strong>添加与合并：</strong>“手动添加角色”可输入或导入名单；“合并角色”经确认后统一身份及关联，采用目标角色设置。</li>\n<li><strong>撤销与重做：</strong>用于恢复误操作；最多保留当前会话的 40 个操作，重新打开项目不恢复撤销历史。</li>\n<li><strong>复用设置：</strong>“导出角色与排版／导入角色与排版”复用显示名称、配色、排版及显示开关，不含日志。导入可新增角色，不代替项目备份。</li>\n</ul></details>\n<details class=\"helpChapter\"><summary>保存与继续编辑</summary><dl>\n<dt>保存到本机浏览器</dt><dd>停止修改约 1.8 秒后保存项目及正文草稿；持续修改时约每 10 秒尝试保存。以状态区“已保存到本机浏览器 · 时间”为准，失败时可重试或下载项目。</dd>\n<dd>重新打开时，通过“本机副本”选择恢复，或选“开始新工作”；不会自动覆盖当前工作。这是本地恢复，不是云端同步。</dd>\n<dt>保存项目</dt><dd>下载完整编辑项目，可备份或换电脑后通过“打开项目”继续。正文草稿先提交；确认文件已下载完整后，再点击“确认已保存”，若期间又有修改需重新下载。</dd>\n<dt>导出 Word</dt><dd>生成可编辑的 .docx，供阅读和分享；它不代替项目文件，也不会清除项目尚未备份的状态。</dd>\n</dl><p class=\"helpNotice\">重要内容请下载项目备份。清理浏览器数据、移动或更名应用文件、隐私模式、更换浏览器或电脑，可能无法读取本机副本；本机保存不保证永久保留。</p></details>\n<details class=\"helpChapter\"><summary>常见问题</summary><dl>\n<dt>角色或类型识别不正确？</dt><dd>从“待确认”展开记录，定位或确认修正；已识别但不正确的记录，右键选“类型与角色…”。必要时在角色列表点“手动添加角色”，服务器可选填。</dd>\n<dt>为什么看不到记录？</dt><dd>检查常用设置的类型开关、角色是否隐藏，以及预览中的角色筛选。筛选不会自动解除隐藏。</dd>\n<dt>为什么导出内容比当前预览多？</dt><dd>浏览分页和角色筛选不限制 Word 导出；类型开关和角色隐藏会影响导出。待确认记录会提示是否保留原文导出。</dd>\n<dt>删除角色与删除记录有什么区别？</dt><dd>“删除角色”取消该身份及关联，当前显示文字保留为普通文字；“删除此条”将整条记录排除出预览和导出。误删后可立即用“撤销”恢复。</dd>\n<dt>换电脑后字体或分页为什么不同？</dt><dd>所选字体不会嵌入 Word，接收者缺少字体时可能替换；浏览器与 Word 的排版也可能不同。字体在常用设置中选择，字号在高级设置中调整。</dd>\n<dt>重新解析会覆盖编辑吗？</dt><dd>原文未变时保留已确认处理；原文变化影响修正、删除或手动正文关联时，会提示冲突。点确定会放弃提示中受影响记录的处理，点取消保留当前结果；建议先保存项目，不要直接确认不理解的冲突。</dd>\n<dt>TXT 导入乱码怎么办？</dt><dd>请在文本编辑器中另存为 UTF-8（可带 BOM）再导入。应用按 UTF-8 读取，不会自动猜测其他编码。</dd>\n</dl></details>\r\n");$('modal').classList.add('helpDialog');$('modalBody').scrollTop=0;};
+$('help').onclick=()=>{modal('使用帮助',"<section class=\"helpIntro\"><h3>简介</h3><p>用于整理 RP 日志，支持角色识别、改名、配色、正文编辑和 Word 导出。日志在本地处理，不上传服务器。</p></section>\n<section><h3>快速开始</h3><ol class=\"helpSteps\">\n<li><strong>导入日志。</strong>点击“导入 TXT”，或拖入 TXT 后选择替换或追加（一次一个文件）；接着添加日志用“追加 TXT”，避免替换当前内容。也可粘贴到原始日志后点击“解析日志”。</li>\n<li><strong>检查识别。</strong>查看预览；打开“待确认”，展开记录，用“跳转至此条”定位，或点“确认与修正”。</li>\n<li><strong>整理角色。</strong>在角色列表修改名称和颜色，在常用设置选择要显示的记录类型。</li>\n<li><strong>设置文档。</strong>常用设置选字体，高级设置调字号、间距及页面；顶部可填写“导出标题”。</li>\n<li><strong>保存与导出。</strong>先“保存项目”并核对下载，再“导出 Word”。以后用“打开项目”继续编辑。</li>\n</ol></section>\n<details class=\"helpChapter\"><summary>常用操作</summary><ul>\n<li><strong>改名：</strong>点击角色名称，在原处修改；已关联的正文名字同步更新。Enter 保存，Esc 取消，失焦保存有效名称。</li>\n<li><strong>配色：</strong>点击角色色块，选择常用色或自定义颜色；确认应用，取消恢复原色。</li>\n<li><strong>编辑正文：</strong>双击正文；Enter 保存、Shift+Enter 换行、Esc 取消，也可点击保存或取消按钮。</li>\n<li><strong>记录菜单：</strong>右键记录（或点记录的省略号），修正类型与角色、调整正文角色关联或删除此条。</li>\n<li><strong>角色菜单：</strong>右键角色（或点其省略号），可“跳转至发言”或“删除角色”；重复跳转依次定位下一条，遵循当前显示范围。</li>\n<li><strong>筛选角色：</strong>预览工具栏点击“筛选角色”，可多选；清除选择恢复全部，只影响浏览。</li>\n<li><strong>隐藏角色：</strong>点击眼睛图标，不显示、不导出该角色作为主体的记录，并锁定其操作；再次点击恢复。其他记录正文中的提及不受影响。</li>\n<li><strong>添加与合并：</strong>“手动添加角色”可输入或导入名单；“合并角色”经确认后统一身份及关联，采用目标角色设置。</li>\n<li><strong>撤销与重做：</strong>用于恢复误操作；最多保留当前会话的 40 个操作，重新打开项目不恢复撤销历史。</li>\n<li><strong>复用设置：</strong>“导出角色与排版／导入角色与排版”复用显示名称、配色、排版及显示开关，不含日志。导入可新增角色，不代替项目备份。</li>\n</ul></details>\n<details class=\"helpChapter\"><summary>保存与继续编辑</summary><dl>\n<dt>保存到本机浏览器</dt><dd>停止修改约 1.8 秒后保存项目及正文草稿；持续修改时约每 10 秒尝试保存。以状态区“已保存到本机浏览器 · 时间”为准，失败时可重试或下载项目。</dd>\n<dd>重新打开时，通过“本机副本”选择恢复，或选“开始新工作”；不会自动覆盖当前工作。这是本地恢复，不是云端同步。</dd>\n<dt>保存项目</dt><dd>下载完整编辑项目，可备份或换电脑后通过“打开项目”继续。正文草稿先提交；确认文件已下载完整后，再点击“确认已保存”，若期间又有修改需重新下载。</dd>\n<dt>导出 Word</dt><dd>生成可编辑的 .docx，供阅读和分享；它不代替项目文件，也不会清除项目尚未备份的状态。</dd>\n</dl><p class=\"helpNotice\">重要内容请下载项目备份。清理浏览器数据、移动或更名应用文件、隐私模式、更换浏览器或电脑，可能无法读取本机副本；本机保存不保证永久保留。</p></details>\n<details class=\"helpChapter\"><summary>常见问题</summary><dl>\n<dt>角色或类型识别不正确？</dt><dd>从“待确认”展开记录，定位或确认修正；已识别但不正确的记录，右键选“类型与角色…”。必要时在角色列表点“手动添加角色”，服务器可选填。</dd>\n<dt>为什么看不到记录？</dt><dd>检查常用设置的类型开关、角色是否隐藏，以及预览中的角色筛选。筛选不会自动解除隐藏。</dd>\n<dt>为什么导出内容比当前预览多？</dt><dd>浏览分页和角色筛选不限制 Word 导出；类型开关和角色隐藏会影响导出。待确认记录会提示是否保留原文导出。</dd>\n<dt>删除角色与删除记录有什么区别？</dt><dd>“删除角色”取消该身份及关联，当前显示文字保留为普通文字；“删除此条”将整条记录排除出预览和导出。误删后可立即用“撤销”恢复。</dd>\n<dt>换电脑后字体或分页为什么不同？</dt><dd>所选字体不会嵌入 Word，接收者缺少字体时可能替换；浏览器与 Word 的排版也可能不同。字体在常用设置中选择，字号在高级设置中调整。</dd>\n<dt>重新解析会覆盖编辑吗？</dt><dd>原文未变时保留已确认处理；原文变化影响修正、删除或手动正文关联时，会提示冲突。点确定会放弃提示中受影响记录的处理，点取消保留当前结果；建议先保存项目，不要直接确认不理解的冲突。</dd>\n<dt>TXT 导入乱码怎么办？</dt><dd>请在文本编辑器中另存为 UTF-8（可带 BOM）再导入。应用按 UTF-8 读取，不会自动猜测其他编码。</dd>\n</dl></details>\r\n");$('modal').classList.add('helpDialog');$('modalBody').scrollTop=0;};
 $('typeFilters').addEventListener('change',e=>{const k=e.target.dataset.visibility;if(!k)return;mutate(()=>{state.settings[k]=e.target.checked;});$('paperWrap').scrollTop=0;});
 window.addEventListener('beforeunload',e=>{if((window.ProjectRecovery?ProjectRecovery.needsLeaveWarning():dirty)||!!(inlineDraft&&inlineDraft.text!==inlineDraft.original)){e.preventDefault();e.returnValue='';}});
 render();
@@ -176,7 +207,7 @@ $('roleList').addEventListener('click',e=>{const card=e.target.closest('[data-ro
 
 function mergeDialog(){const roles=state.roles.filter(r=>!r.redirect&&!r.hidden&&!r.deletedIdentity);if(roles.length<2)return toast('至少需要两个未隐藏角色');const count=id=>state.records.filter(r=>C.resolve(state,r.roleId)?.id===id).length;modal('合并角色','<label>目标角色<select id="mergeTarget">'+roles.map(r=>'<option value="'+r.id+'">'+esc(label(r))+'</option>').join('')+'</select></label><p>选择来源角色：</p><div id="mergeSources">'+roles.map(r=>'<label class="check"><input type="checkbox" value="'+r.id+'">'+esc(label(r))+' · '+count(r.id)+' 条</label>').join('')+'</div><button id="mergeReview">查看合并结果</button>');$('mergeReview').onclick=()=>{const target=C.resolve(state,$('mergeTarget').value),sources=[...$('mergeSources').querySelectorAll('input:checked')].map(x=>C.resolve(state,x.value)).filter(r=>r.id!==target.id);if(!sources.length)return toast('请选择与目标不同的来源角色');const all=[target,...sources],cross=sources.some(r=>r.server!==target.server);modal('确认合并角色','<p>目标：'+esc(label(target))+' · '+count(target.id)+' 条</p><p>来源：'+sources.map(r=>esc(label(r))+' · '+count(r.id)+' 条').join('<br>')+'</p><p>合并后显示名称：'+esc(target.display)+'；颜色：'+esc(target.color)+'；状态：'+(target.hidden?'隐藏':'显示')+'。</p><p>保留目标设置，来源的颜色和显示名不覆盖目标；来源原名及服务器作为身份映射保留。记录数包含已删除记录，删除状态不变。</p><p>'+all.map(r=>esc(label(r))+'：显示名 '+esc(r.display)+' / '+r.color+' / '+(r.hidden?'隐藏':'显示')).join('<br>')+'</p>'+(cross?'<p class="warning">来源与目标的服务器身份不一致（含未设服务器），将跨身份合并。</p>':'')+'<label class="check"><input type="checkbox" id="mergeAccept">我确认合并，并使用以上目标名称、颜色和显示状态</label><button id="mergeApply" disabled>确认合并</button><button id="mergeBack">返回选择</button>');$('mergeAccept').onchange=()=>$('mergeApply').disabled=!$('mergeAccept').checked;$('mergeBack').onclick=mergeDialog;$('mergeApply').onclick=()=>{mutate(()=>C.mergeRoles(state,sources.map(r=>r.id),target.id));close();toast('已合并，可撤销');};};}
 const mergeButton=document.createElement('button');mergeButton.id='mergeRoles';mergeButton.className='roleToolAction';mergeButton.textContent='合并角色';mergeButton.onclick=mergeDialog;document.querySelector('.roleTools').insertBefore(mergeButton,$('knownRoles'));
-const appendButton=document.createElement('button');appendButton.id='appendTxt';appendButton.textContent='追加 TXT';appendButton.onclick=()=>pick('.txt',text=>{if(!ready())return;mutate(()=>{const source=state.source+(state.source&&!/[\r\n]$/.test(state.source)?'\n':'')+text;C.parse(state,source);setSource(source);page=0;});toast('已追加日志，保留角色映射');});$('importTxt').after(appendButton);
+const appendButton=document.createElement('button');appendButton.id='appendTxt';appendButton.textContent='追加 TXT';appendButton.onclick=()=>pickLog('append');$('importTxt').after(appendButton);
 
 // Navigation state is session-only; keys follow records through edits and deletion.
 const roleJumpCursors=new Map();let jumpHighlightTimer;
@@ -306,4 +337,31 @@ function protectDraft(next){
 // Move the existing live information nodes; counts/settings handlers stay unchanged.
 (function setupDocumentInformation(){
  const top=document.querySelector('.previewTop'),details=document.createElement('div');details.className='documentInfo';details.setAttribute('aria-label','文档记录和页面信息');details.append($('counts'),$('pageInfo'));top.append(details);const old=document.querySelector('.previewMetrics');if(old&&!old.children.length)old.remove();
+})();
+
+// File drags only: text selection and internal drags retain native behavior.
+(function setupLogDrop(){
+ const overlay=document.createElement('div');overlay.id='txtDropOverlay';overlay.hidden=true;overlay.setAttribute('role','status');overlay.textContent='放下 TXT，选择替换或追加';document.body.append(overlay);
+ let depth=0,reading=false,chooser=null;
+ const files=e=>Array.from(e.dataTransfer?.types||[]).includes('Files');
+ const clear=()=>{depth=0;overlay.hidden=true;};
+ window.addEventListener('dragenter',e=>{if(!files(e))return;e.preventDefault();depth++;overlay.hidden=false;});
+ window.addEventListener('dragover',e=>{if(!files(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';});
+ window.addEventListener('dragleave',e=>{if(!files(e)&&!depth)return;depth=Math.max(0,depth-1);if(!depth)clear();});
+ window.addEventListener('dragend',clear);window.addEventListener('blur',clear);
+ window.addEventListener('drop',async e=>{
+  const fileDrop=files(e);clear();if(!fileDrop)return;e.preventDefault();
+  if(reading||chooser||taskBusy||document.getElementById('draftDecision')){toast('请先完成当前操作，再拖入 TXT');return;}
+  const list=Array.from(e.dataTransfer.files||[]);if(list.length!==1){toast('一次仅支持一个 TXT 文件，请逐个导入');return;}
+  reading=true;
+  try{
+   const text=await readLogFile(list[0]);
+   const d=document.createElement('dialog');chooser=d;d.id='txtDropChoice';d.setAttribute('aria-labelledby','txtDropTitle');
+   d.innerHTML='<h3 id="txtDropTitle">导入 TXT</h3><p class="dropFilename"></p><div class="row"><button data-drop="replace">导入并替换</button><button data-drop="append">追加到当前日志</button><button data-drop="cancel" autofocus>取消</button></div>';
+   d.querySelector('p').textContent=list[0].name;
+   const finish=mode=>{d.close();d.remove();chooser=null;clear();if(mode!=='cancel')applyLogText(text,mode);};
+   d.onclick=event=>{const mode=event.target.closest('[data-drop]')?.dataset.drop;if(mode)finish(mode);};
+   d.oncancel=event=>{event.preventDefault();finish('cancel');};document.body.append(d);d.showModal();
+  }catch(error){toast('导入失败：'+error.message);}finally{reading=false;clear();}
+ });
 })();

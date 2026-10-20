@@ -156,3 +156,8 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 .helpDialog h3{font-size:14px;margin:10px 0 6px}.helpDialog p{margin:6px 0 12px}.helpDialog ol,.helpDialog ul{padding-left:22px;margin:6px 0 14px}.helpDialog li{margin:6px 0}
 .helpDialog .helpChapter{border-top:1px solid var(--line);padding:4px 0}.helpDialog .helpChapter>summary{font-size:14px;font-weight:600;min-height:42px;cursor:pointer}.helpDialog dl{margin:6px 0 14px}.helpDialog dt{font-weight:600;margin-top:12px}.helpDialog dd{margin:4px 0 8px}.helpDialog .helpNotice{padding:10px 12px;background:var(--pale);border-radius:6px;font-size:12px}
 @media(max-width:480px){#modal.helpDialog[open]{padding:12px}.helpDialog #modalBody{padding-right:5px}}
+
+#txtDropOverlay{position:fixed;inset:16px;z-index:10000;pointer-events:none;display:flex;align-items:center;justify-content:center;border:2px dashed var(--accent,#28695f);border-radius:14px;background:rgba(241,248,245,.94);color:#245d54;font-size:20px;font-weight:600;padding:24px;text-align:center}
+#txtDropOverlay[hidden]{display:none}
+#txtDropChoice{max-width:min(480px,calc(100vw - 32px));border:1px solid #d4dedb;border-radius:12px;padding:24px}
+#txtDropChoice .dropFilename{overflow-wrap:anywhere;color:#68717c}#txtDropChoice .row{flex-wrap:wrap;gap:8px}#txtDropChoice button{white-space:nowrap}
