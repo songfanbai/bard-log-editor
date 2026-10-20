@@ -163,3 +163,12 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 #txtDropChoice .dropFilename{overflow-wrap:anywhere;color:#68717c}#txtDropChoice .row{flex-wrap:wrap;gap:8px}#txtDropChoice button{white-space:nowrap}
 
 @media(max-width:1100px){.previewPanel{position:relative}}
+
+#modal.recordEditDialog[open]{display:flex;flex-direction:column;max-height:calc(100dvh - 32px);overflow:hidden}
+.recordEditDialog .modalHead{flex-shrink:0}
+.recordEditDialog #modalBody{flex:1;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain}
+.recordEditActions{flex-shrink:0;display:flex;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--line);background:var(--ui-panel,#fff)}
+.recordEditActions button{white-space:nowrap}
+.recordEditDialog #editBody{height:110px;min-height:70px;max-height:160px;resize:vertical;overflow:auto}
+.recordEditDialog #modalBody pre{max-height:110px;overflow:auto}
+@media(max-width:520px){#modal.recordEditDialog{padding:12px;width:calc(100vw - 24px)}.recordEditDialog .settingGrid{grid-template-columns:1fr}.recordEditActions{gap:6px}.recordEditActions button{padding:8px 10px}.recordEditDialog #editBody{max-height:120px}}
