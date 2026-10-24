@@ -298,5 +298,18 @@ function autoPalette(s){const roles=s.roles.filter(r=>!r.redirect&&!r.hidden&&!r
  for(let i=colors.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[colors[i],colors[j]]=[colors[j],colors[i]];}
  if(roles.length&&roles.every((r,i)=>r.color.toUpperCase()===colors[i].toUpperCase())&&colors.length>1)colors.push(colors.shift());return colors.slice(0,roles.length);
 }
-const API={bodyEditModel,rebaseBodyReferences,deleteRole,applyRoleExclusions,dice,titleView,exportFilename,mergeRoles,autoPalette,colorLab,activeRecords,setBodyReference,partyCandidates,chooseParty,tagged,taggedRecord,bodyReferences,refreshReferences,JOB_NAMES,SERVERS,PALETTE,clone,defaults,fresh,identity,resolve,ensure,timed,splitSpeaker,party,validJob,dialogue,actionMatch,visible,visibleRecords,normalizeType,keyed,conflicts,parse,view,docx,documentXml,validateSettings,migrateSettings,openProject};root.LogCore=API;if(typeof module!=='undefined')module.exports=API;
+function parseRoleList(text){
+ const rows=[],errors=[];
+ String(text).replace(/^\uFEFF/,'').split(/\r\n|\r|\n/).forEach((raw,index)=>{
+  if(!raw.trim()&&!raw.includes('\t'))return;
+  const parts=raw.split(/[|@＠\t]/u);
+  if(parts.length>2){errors.push('第 '+(index+1)+' 行：有多个分隔符（含连续 Tab），每行最多一个');return;}
+  const name=parts[0].trim(),server=(parts[1]||'').trim();
+  if(!name){errors.push('第 '+(index+1)+' 行：角色名不能为空');return;}
+  rows.push([name,server]);
+ });
+ if(errors.length)throw Error(errors.join('\n')+'\n支持 |、@、＠ 或一个实际 Tab；整批未添加。');
+ return rows;
+}
+const API={parseRoleList,bodyEditModel,rebaseBodyReferences,deleteRole,applyRoleExclusions,dice,titleView,exportFilename,mergeRoles,autoPalette,colorLab,activeRecords,setBodyReference,partyCandidates,chooseParty,tagged,taggedRecord,bodyReferences,refreshReferences,JOB_NAMES,SERVERS,PALETTE,clone,defaults,fresh,identity,resolve,ensure,timed,splitSpeaker,party,validJob,dialogue,actionMatch,visible,visibleRecords,normalizeType,keyed,conflicts,parse,view,docx,documentXml,validateSettings,migrateSettings,openProject};root.LogCore=API;if(typeof module!=='undefined')module.exports=API;
 })(typeof globalThis!=='undefined'?globalThis:this);
