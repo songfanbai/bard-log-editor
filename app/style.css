@@ -180,3 +180,6 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 #roleFontDialog .fontPicker{position:relative}#role-fontOptions{position:absolute;top:65px;left:0;right:0;z-index:5;max-height:200px;overflow:auto;background:var(--ui-panel,#fff)}
 
 #roleFontDialog .fontPicker{min-height:280px}
+
+.fontMatchCount{position:sticky;top:0;z-index:1;padding:7px 9px;background:var(--ui-panel,#fff);color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)}
+.fontPicker [role=option][aria-selected=true]{background:var(--pale);font-weight:600}
