@@ -102,7 +102,7 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 
 #saveGroup{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}#confirmProjectSaved{white-space:nowrap;border-color:var(--line)}
 
-#recoveryNotice{padding:8px 16px;background:#fff5d6;color:#5b4520;font-size:12px}#recoveryNotice[hidden]{display:none}#draftDecision{max-width:min(480px,90vw);border:1px solid #d8d4cb;border-radius:10px;padding:20px}#draftDecision::backdrop{background:#0004}#draftDecision .row{flex-wrap:wrap}#recoveryOpen{font-size:12px;padding:3px 7px}
+#recoveryNotice{padding:8px 16px;background:#fff5d6;color:#5b4520;font-size:12px}#recoveryNotice[hidden]{display:none}#draftDecision{max-width:min(480px,90vw);border:1px solid #d8d4cb;border-radius:10px;padding:20px}#draftDecision::backdrop{background:#0004}#draftDecision .row{flex-wrap:wrap}
 
 /* One responsive preview toolbar; each group preserves readable controls. */
 .previewControls{display:flex!important;align-items:center;justify-content:flex-start!important;gap:18px;flex-wrap:wrap;}
@@ -122,8 +122,7 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 #recoveryRow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:10px 24px;background:#fff5d6;color:#5b4520;min-width:0}
 #recoveryRow[hidden]{display:none}
 #recoveryRow #recoveryNotice{flex:0 1 auto;min-width:0;padding:0;margin:0;font-size:13px;line-height:1.6;overflow-wrap:anywhere;background:transparent}
-#recoveryOpen{flex:none;white-space:nowrap;min-height:32px;padding:5px 10px;line-height:20px}
-#recoveryRow #recoveryOpen{font-size:13px}
+
 .previewTop{justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:8px 16px}
 .previewTop>div:first-child{flex:none}
 .previewTop h2{white-space:nowrap;margin:0}
@@ -196,3 +195,6 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 .fontPager{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;flex:none;border-top:1px solid var(--line,#ccc);background:var(--ui-panel,#fff);font:12px sans-serif}
 :is(#fontOptions,#role-fontOptions) .fontPager button{width:auto;min-height:32px;padding:5px 10px;border:1px solid var(--line,#ccc);border-radius:5px;text-align:center;white-space:nowrap;font:12px sans-serif}
 .fontPage{white-space:nowrap}
+
+/* Shared size and typography; actions keep their own labels and handlers. */
+#recoveryOpen.recoveryAction,#startBrowserWork.recoveryAction{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;box-sizing:border-box;min-width:96px;height:34px;min-height:34px;margin:0;padding:6px 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:20px;white-space:nowrap;vertical-align:middle}

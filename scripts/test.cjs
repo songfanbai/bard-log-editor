@@ -4,6 +4,6 @@ fs.mkdirSync('test-results', { recursive: true });
 const files = ['test-tag-aliases.cjs','test-role-sync.cjs','test-role-font.cjs','test-clock-tags.cjs','test-readme-examples.cjs','test-dice.cjs','test-bold-label.cjs','test-safety-conflicts.cjs'];
 if (process.argv.includes('--browser')) {
   cp.execFileSync(process.execPath,['scripts/build.cjs'],{stdio:'inherit'});
-  files.push('test-action-boundary-ui.cjs','test-tag-aliases-ui.cjs','test-font-popup.cjs','test-font-list.cjs','test-role-sync-ui.cjs','test-role-font-ui.cjs','test-role-list-rc8.cjs','test-record-dialog-rc7.cjs','test-dialog-rc6.cjs','test-txt-drop.cjs','test-idb-basic.cjs','test-idb-failures.cjs','test-idb-mutations.cjs','test-help.cjs','test-role-toolbar-fixed.cjs');
+  files.push('test-boundary-review-ui.cjs','test-action-boundary-ui.cjs','test-tag-aliases-ui.cjs','test-font-popup.cjs','test-font-list.cjs','test-role-sync-ui.cjs','test-role-font-ui.cjs','test-role-list-rc8.cjs','test-record-dialog-rc7.cjs','test-dialog-rc6.cjs','test-txt-drop.cjs','test-idb-basic.cjs','test-idb-failures.cjs','test-idb-mutations.cjs','test-help.cjs','test-role-toolbar-fixed.cjs');
 }
 for (const file of files) cp.execFileSync(process.execPath,[path.join('tests',file)],{stdio:'inherit'});

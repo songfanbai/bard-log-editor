@@ -54,6 +54,14 @@ function actionBoundary(raw,name,server=''){
  if(!parsed||parsed.type!=='action'||(parsed.name&&parsed.name!==name))return null;
  return {prefix:name+actual,server:actual,body:parsed.body};
 }
+// Review only a structurally unsplit action body. Never change saved edits here.
+function actionBoundaryReview(s,r){
+ if(r.type!=='action'||s.deleted?.[r.key])return null;
+ const role=resolve(s,r.roleId);if(!role||role.deletedIdentity)return null;
+ const t=tagged(r.raw)||timed(r.raw);if(t.invalid||(r.body!==t.rest&&r.body!==r.raw))return null;
+ const name=r.originalName||role.name,p=actionBoundary(r.raw,name,r.server||'');
+ return p&&p.body!==r.body?{...p,name}:null;
+}
 function lines(source){return source.split(/\r\n|\n|\r/);}
 function keyed(source){const seen=new Map();return lines(source).map((raw,index)=>{const n=(seen.get(raw)||0)+1;seen.set(raw,n);return{raw,index,key:JSON.stringify([raw,n])};});}
 function conflicts(s,source) {
@@ -337,5 +345,5 @@ function parseRoleList(text){
  if(errors.length)throw Error(errors.join('\n')+'\n支持 |、@、＠ 或一个实际 Tab；整批未添加。');
  return rows;
 }
-const API={actionBoundary,parseRoleList,bodyEditModel,rebaseBodyReferences,deleteRole,applyRoleExclusions,dice,titleView,exportFilename,mergeRoles,autoPalette,colorLab,activeRecords,setBodyReference,partyCandidates,chooseParty,tagged,taggedRecord,bodyReferences,refreshReferences,JOB_NAMES,SERVERS,PALETTE,clone,defaults,fresh,identity,resolve,ensure,timed,splitSpeaker,party,validJob,dialogue,actionMatch,visible,visibleRecords,normalizeType,keyed,conflicts,parse,view,docx,documentXml,validateSettings,migrateSettings,openProject};root.LogCore=API;if(typeof module!=='undefined')module.exports=API;
+const API={actionBoundaryReview,actionBoundary,parseRoleList,bodyEditModel,rebaseBodyReferences,deleteRole,applyRoleExclusions,dice,titleView,exportFilename,mergeRoles,autoPalette,colorLab,activeRecords,setBodyReference,partyCandidates,chooseParty,tagged,taggedRecord,bodyReferences,refreshReferences,JOB_NAMES,SERVERS,PALETTE,clone,defaults,fresh,identity,resolve,ensure,timed,splitSpeaker,party,validJob,dialogue,actionMatch,visible,visibleRecords,normalizeType,keyed,conflicts,parse,view,docx,documentXml,validateSettings,migrateSettings,openProject};root.LogCore=API;if(typeof module!=='undefined')module.exports=API;
 })(typeof globalThis!=='undefined'?globalThis:this);
