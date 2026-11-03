@@ -42,6 +42,18 @@ function actionMatch(s,rest){
  const candidates=[...new Set(found.map(x=>resolve(s,x.role.id)?.id).filter(Boolean))],hit=found[0];
  return {type:candidates.length===1&&rest.length>length?'action':'pending',roleId:candidates.length===1?candidates[0]:null,candidates,originalName:hit.role.name,server:hit.explicit?hit.role.server:'',prefix:hit.prefix,explicit:hit.explicit,body:rest.slice(length),reason:candidates.length>1?'同名或重叠前缀对应多个角色身份':rest.length===length?'角色后缺少动作正文':''};
 }
+// Explicit user-selected identity, parsed against the original header, never rendered text.
+function actionBoundary(raw,name,server=''){
+ name=name.trim();server=server.trim();if(!name)return null;
+ const tag=tagged(raw),t=tag||timed(raw);
+ if(t.invalid||(tag&&tag.type!=='action')||(!tag&&isPartyLike(raw))||!t.rest.startsWith(name))return null;
+ const suffix=t.rest.slice(name.length),actual=SORTED_SERVERS.find(x=>suffix.startsWith(x))||'';
+ if(server&&actual&&server!==actual)return null;
+ const context={roles:[{id:'r1',name,server:server||actual}]};
+ const parsed=tag?taggedRecord(context,t):actionMatch(context,t.rest);
+ if(!parsed||parsed.type!=='action'||(parsed.name&&parsed.name!==name))return null;
+ return {prefix:name+actual,server:actual,body:parsed.body};
+}
 function lines(source){return source.split(/\r\n|\n|\r/);}
 function keyed(source){const seen=new Map();return lines(source).map((raw,index)=>{const n=(seen.get(raw)||0)+1;seen.set(raw,n);return{raw,index,key:JSON.stringify([raw,n])};});}
 function conflicts(s,source) {
@@ -188,7 +200,7 @@ function bodyReferences(s,r){
 }
 // Editing uses a projection of frozen names; the imported source remains untouched.
 function bodyEditModel(s,r){
- bodyReferences(s,r);const refs=clone(s.referenceBindings[r.key]?.refs||[]).sort((a,b)=>a.start-b.start);
+ bodyReferences(s,r);const refs=clone(s.referenceBindings?.[r.key]?.refs||[]).sort((a,b)=>a.start-b.start);
  let body='',cursor=0,delta=0;const mapped=[];
  for(const ref of refs){body+=r.body.slice(cursor,ref.start);const text=ref.frozen?ref.display:r.body.slice(ref.start,ref.end);body+=text;const next={...ref,start:ref.start+delta,end:ref.start+delta+text.length};delta+=text.length-(ref.end-ref.start);if(ref.serverStart!==undefined)next.serverStart=ref.serverStart+delta;if(ref.serverEnd!==undefined)next.serverEnd=ref.serverEnd+delta;mapped.push(next);cursor=ref.end;}
  body+=r.body.slice(cursor);return {body,refs:mapped};
@@ -325,5 +337,5 @@ function parseRoleList(text){
  if(errors.length)throw Error(errors.join('\n')+'\n支持 |、@、＠ 或一个实际 Tab；整批未添加。');
  return rows;
 }
-const API={parseRoleList,bodyEditModel,rebaseBodyReferences,deleteRole,applyRoleExclusions,dice,titleView,exportFilename,mergeRoles,autoPalette,colorLab,activeRecords,setBodyReference,partyCandidates,chooseParty,tagged,taggedRecord,bodyReferences,refreshReferences,JOB_NAMES,SERVERS,PALETTE,clone,defaults,fresh,identity,resolve,ensure,timed,splitSpeaker,party,validJob,dialogue,actionMatch,visible,visibleRecords,normalizeType,keyed,conflicts,parse,view,docx,documentXml,validateSettings,migrateSettings,openProject};root.LogCore=API;if(typeof module!=='undefined')module.exports=API;
+const API={actionBoundary,parseRoleList,bodyEditModel,rebaseBodyReferences,deleteRole,applyRoleExclusions,dice,titleView,exportFilename,mergeRoles,autoPalette,colorLab,activeRecords,setBodyReference,partyCandidates,chooseParty,tagged,taggedRecord,bodyReferences,refreshReferences,JOB_NAMES,SERVERS,PALETTE,clone,defaults,fresh,identity,resolve,ensure,timed,splitSpeaker,party,validJob,dialogue,actionMatch,visible,visibleRecords,normalizeType,keyed,conflicts,parse,view,docx,documentXml,validateSettings,migrateSettings,openProject};root.LogCore=API;if(typeof module!=='undefined')module.exports=API;
 })(typeof globalThis!=='undefined'?globalThis:this);
