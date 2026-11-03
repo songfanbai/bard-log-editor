@@ -4,7 +4,7 @@
 
 ## 快速下载与使用
 
-**[下载单文件 HTML](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.12/bard-log-editor.html)** · [下载完整 ZIP（含说明和示例）](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.12/bard-log-editor-1.1.5-rc.12.zip)
+**[下载单文件 HTML](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.13/bard-log-editor.html)** · [下载完整 ZIP（含说明和示例）](https://github.com/songfanbai/bard-log-editor/releases/download/1.1.5-rc.13/bard-log-editor-1.1.5-rc.13.zip)
 
 下载 HTML 后，在电脑浏览器中打开即可离线使用，无需安装。GitHub 会转换中文附件文件名，因此直接下载名为 `bard-log-editor.html`；可在首次使用前改名为 `吟游诗人随手记·对话log编辑器.html`。ZIP 内已使用完整中文名，解压后打开即可。
 
@@ -19,6 +19,10 @@
 继续添加日志用“追加 TXT”；字体在常用设置，字号在高级设置。详细操作见右上角“使用帮助”。
 
 ## 支持格式及示例
+
+类型标签支持中文别名：`[说话]` = `[Say]`、`[情感动作]` = `[Emote]`、`[小队]` = `[Party]`、`[喊话]` = `[Yell]`、`[呼喊]` = `[Shout]`。英文不区分大小写。
+时间可写 `[3:13]`、`[03:13]`、`[2026-09-16 3:13]` 或 `[2026-09-16 19:59]`，也可省略；时间与标签之间可以没有空格。职业和角色分界仍按原有规则处理，歧义进入“待确认”。
+
 
 格式 1：
 
@@ -66,7 +70,7 @@
 - **升级或改用本次新文件名前，先下载项目及界面配置备份**，在新版导入并核对，不要先清除旧数据。
 - 字体不会嵌入 Word；接收者未安装字体时，显示及分页可能不同。本机字体读取需浏览器支持并由用户授权，无法读取时可手动选字体。
 
-当前为 **1.1.5-rc.12 测试版**，不是正式稳定版。已知问题：不可信项目文件的安全校验尚不完整；超过 30 MiB 的项目无法重新导入。请只打开可信项目并控制规模。Windows / Chrome 离线运行已测试，其他平台、真实中文输入法及桌面 Word 字体分页尚未完整验收。详见[已知限制](docs/KNOWN_ISSUES.md)。
+当前为 **1.1.5-rc.13 测试版**，不是正式稳定版。已知问题：不可信项目文件的安全校验尚不完整；超过 30 MiB 的项目无法重新导入。请只打开可信项目并控制规模。Windows / Chrome 离线运行已测试，其他平台、真实中文输入法及桌面 Word 字体分页尚未完整验收。详见[已知限制](docs/KNOWN_ISSUES.md)。
 
 [使用说明](docs/使用说明.txt) · [开发与测试](docs/DEVELOPMENT.md) · [发布说明](docs/RELEASE_NOTES.md)
 
