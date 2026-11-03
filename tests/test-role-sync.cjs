@@ -1,0 +1,17 @@
+const C=require('../app/core.js'),A=require('node:assert/strict');
+const listed=s=>s.roles.filter(r=>!r.inactive&&!r.redirect&&!r.deletedIdentity).map(r=>r.name).sort();
+const s=C.fresh();C.parse(s,'[Say]云舟静语庄园: 好\n[Say]星灯红玉海: 好');const a=s.roles[0],b=s.roles[1];Object.assign(a,{display:'舟',color:'#112233',font:'楷体'});
+C.parse(s,'[Say]新月: 好');A.deepEqual(listed(s),['新月']);A.equal(a.inactive,true);
+C.parse(s,'[Say]云舟静语庄园: 好');A.equal(s.records[0].roleId,a.id);A.equal(a.font,'楷体');A.equal(a.display,'舟');A.equal(a.color,'#112233');
+C.parse(s,'[Say]云舟红玉海: 好');A.notEqual(s.records[0].roleId,a.id);A.equal(a.inactive,true);
+const manual=C.ensure(s,'记录员');manual.manual=true;b.hidden=true;C.parse(s,'[Say]云舟红玉海: 星灯来了');A(listed(s).includes('记录员'));A(listed(s).includes('星灯'));
+b.hidden=false;C.parse(s,s.source);A.equal(b.inactive,false);C.parse(s,'[Say]云舟红玉海: 好');A.equal(b.inactive,true);
+C.parse(s,'[Say]云舟静语庄园: 星灯来了');C.setBodyReference(s,s.records[0],0,2,null);C.parse(s,s.source);A.equal(b.inactive,true);A.equal(s.referenceBindings[s.records[0].key].refs[0].roleId,null);
+s.deleted={[s.records[0].key]:true};C.parse(s,s.source);A.equal(a.inactive,true);A.equal(C.activeRecords(s).length,0);
+const m=C.fresh();C.parse(m,'[Say]甲: 好\n[Say]乙红玉海: 好');const [x,y]=m.roles;y.font='Arial';C.mergeRoles(m,[x.id],y.id);C.parse(m,'[Say]甲: 好');A.equal(m.records[0].roleId,y.id);A.deepEqual(listed(m),['乙']);C.parse(m,'');A.deepEqual(listed(m),[]);C.parse(m,'[Say]甲: 好');A.equal(m.records[0].roleId,y.id);A.equal(y.font,'Arial');
+C.deleteRole(m,y.id);C.parse(m,m.source);A.deepEqual(listed(m),[]);A.equal(m.records[0].roleId,null);
+const restored=C.openProject(C.clone(s));A.deepEqual(listed(restored),listed(s));A.equal(restored.roles.find(r=>r.id===a.id).font,'楷体');
+const fixes=C.fresh();C.parse(fixes,'[Say]甲: 好\n[Say]乙: 好');fixes.corrections[fixes.records[0].key]={...fixes.records[0],roleId:fixes.roles[1].id,body:'修改正文'};C.parse(fixes,fixes.source);A.deepEqual(listed(fixes),['乙']);A.equal(fixes.records[0].body,'修改正文');
+console.log('PASS role reconciliation: replace/server/return settings, references/cancel, manual/hidden, deletion, merge aliases/exclusions, correction, project roundtrip');
+const all=C.fresh();C.parse(all,'[Say]同一: 好\n[Party]★同一: 好\n[Emote]同一挥手\n[Shout]同一: 好\n[Yell]同一: 好\n同一掷出了3点！（最大6）');A.equal(all.records.length,6);A.equal(new Set(all.records.map(r=>r.roleId)).size,1);C.parse(all,'[Say]其他: 好');A.deepEqual(listed(all),['其他']);A.equal(C.autoPalette(all).length,1);const originalId=all.roles[0].id;C.parse(all,'[Say]其他: 同一来了');A.deepEqual(listed(all),['其他','同一']);A.equal(all.records[0].references[0].roleId,originalId);
+console.log('PASS all six record types, archive excluded from palette, body-only identity reactivation');

@@ -152,7 +152,7 @@ function parse(s,source){
  if(t.type==='party'&&!t.invalid)rec.partyCandidates=partyCandidates(t).map(x=>({name:x.name,server:x.server,job:x.job,body:x.body,partyField:x.partyField}));
  const p=taggedRecord(s,t);if(p){const role=p.roleId?resolve(s,p.roleId):ensure(s,p.name,p.server);Object.assign(rec,{...p,originalName:p.name||p.originalName,roleId:role.id,reason:''});delete rec.rest;}
  const fix=s.corrections[r.key];if(fix)rec={...rec,...clone(fix),confirmed:true};return rec;});
- delete s._partyKnowledge;s.parserRevision=8;assignRecordIds(s,prior);applyRoleExclusions(s);refreshReferences(s);return s.records;
+ delete s._partyKnowledge;s.parserRevision=8;assignRecordIds(s,prior);applyRoleExclusions(s);refreshReferences(s);syncRoleUsage(s);return s.records;
 }
 const mentionCache=new WeakMap(),recordReferenceCache=new WeakMap();
 function mentionIndex(s){const signature=JSON.stringify(s.roles.map(r=>[r.id,r.name,r.server,r.display,r.redirect,r.deletedIdentity]));let cached=mentionCache.get(s);if(cached?.signature===signature)return cached;
@@ -208,6 +208,18 @@ function setBodyReference(s,r,start,end,roleId){
  const saved=s.referenceBindings[r.key];saved.refs=saved.refs.filter(x=>x.end<=start||x.start>=end);saved.refs.push({start,end,roleId,manual:true});bodyReferences(s,r);
 }
 function refreshReferences(s){for(const r of s.records)bodyReferences(s,r);}
+// Retain identity/settings and redirects in the project, but list only current users.
+// Ignore stale bindings and deleted records; never infer usage from archived metadata.
+function syncRoleUsage(s){
+ const used=new Set(),keep=id=>{const role=resolve(s,id);if(role&&!role.deletedIdentity)used.add(role.id);};
+ for(const role of s.roles)if(role.manual||role.hidden)keep(role.id);
+ for(const row of activeRecords(s)){
+  keep(row.roleId);
+  for(const ref of row.references||[])if(!ref.frozen)keep(ref.roleId);
+ }
+ for(const role of s.roles)role.inactive=!used.has(resolve(s,role.id)?.id);
+}
+
 function mergeRoles(s,sourceIds,targetId){
  const target=resolve(s,targetId),sources=[...new Set(sourceIds.map(id=>resolve(s,id)?.id))].filter(id=>id&&id!==target?.id);
  if(!target||!sources.length)throw Error('请选择来源及目标角色');
@@ -287,11 +299,11 @@ function openProject(data){
   s.records=s.records.map((r,i)=>{if((!tagged(r.raw)&&!dice(r.raw))||r.confirmed||s.corrections[r.key])return r;const next=freshState.records[i];if(['type','originalName','server','job','body','time','date'].some(k=>r[k]!==next[k]))changed++;return next;});
   s.roles=freshState.roles;s.nextRoleId=freshState.nextRoleId;if(changed)s.migrationNotes.push('已按当前规则重新识别 '+changed+' 条未确认的日期标签或掷骰记录；手动修正保持不变。');
  }
- s.parserRevision=8;assignRecordIds(s);applyRoleExclusions(s);refreshReferences(s);return s;
+ s.parserRevision=8;assignRecordIds(s);applyRoleExclusions(s);refreshReferences(s);syncRoleUsage(s);return s;
 }
 
 function colorLab(hex){const rgb=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);const [r,g,b]=rgb,y=.2126*r+.7152*g+.0722*b;const f=v=>v>.008856?Math.cbrt(v):7.787*v+16/116;const x=f((.4124*r+.3576*g+.1805*b)/.95047),yy=f(y),z=f((.0193*r+.1192*g+.9505*b)/1.08883);return {lab:[116*yy-16,500*(x-yy),200*(yy-z)],contrast:1.05/(y+.05)};}
-function autoPalette(s){const roles=s.roles.filter(r=>!r.redirect&&!r.hidden&&!r.deletedIdentity),reserved=new Set([s.settings.partyUniform,s.settings.actionUniform,s.settings.shoutUniform,s.settings.yellUniform,s.settings.diceUniform,...s.roles.filter(r=>!r.redirect&&r.hidden).map(r=>r.color)].map(x=>x.toUpperCase())),colors=PALETTE.filter(x=>!reserved.has(x.toUpperCase()));
+function autoPalette(s){const roles=s.roles.filter(r=>!r.inactive&&!r.redirect&&!r.hidden&&!r.deletedIdentity),reserved=new Set([s.settings.partyUniform,s.settings.actionUniform,s.settings.shoutUniform,s.settings.yellUniform,s.settings.diceUniform,...s.roles.filter(r=>!r.redirect&&r.hidden).map(r=>r.color)].map(x=>x.toUpperCase())),colors=PALETTE.filter(x=>!reserved.has(x.toUpperCase()));
  if(roles.length>colors.length){const used=new Set([...reserved,...colors.map(x=>x.toUpperCase())]),anchors=[...used].map(x=>colorLab(x).lab),candidates=[];const distance=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
  for(let r=24;r<=200;r+=16)for(let g=24;g<=200;g+=16)for(let b=24;b<=200;b+=16){if(Math.max(r,g,b)-Math.min(r,g,b)<32)continue;const hex='#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();if(used.has(hex))continue;const sample=colorLab(hex);if(sample.contrast<4.5)continue;candidates.push({hex,lab:sample.lab,min:Math.min(...anchors.map(a=>distance(a,sample.lab)))});}
  while(colors.length<roles.length){let best=-1;for(let i=0;i<candidates.length;i++)if(best<0||candidates[i].min>candidates[best].min)best=i;if(best<0||candidates[best].min<8)throw Error('可辨识颜色不足，未修改角色颜色。请减少角色数量或手动配色。');const [pick]=candidates.splice(best,1);colors.push(pick.hex);for(const v of candidates)v.min=Math.min(v.min,distance(v.lab,pick.lab));}}
