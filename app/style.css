@@ -183,3 +183,16 @@ header{display:grid;grid-template-columns:minmax(260px,350px) minmax(0,1fr);alig
 
 .fontMatchCount{position:sticky;top:0;z-index:1;padding:7px 9px;background:var(--ui-panel,#fff);color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)}
 .fontPicker [role=option][aria-selected=true]{background:var(--pale);font-weight:600}
+
+/* Shared viewport-positioned font popup; only the middle list scrolls. */
+:is(#fontOptions,#role-fontOptions).fontPopup{position:fixed!important;inset:auto;margin:0!important;max-width:none!important;max-height:none!important;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden!important;padding:0;background:var(--ui-panel,#fff);border:1px solid var(--line,#ccc);box-shadow:0 8px 24px #0002;z-index:2147483647;color:var(--ink,#222)}
+:is(#fontOptions,#role-fontOptions).fontPopup[hidden]{display:none!important}
+.fontPopup::backdrop{background:transparent;pointer-events:none}
+.fontSearchBar{flex:none;padding:8px;background:var(--ui-panel,#fff)}
+.fontSearchBar input{width:100%;box-sizing:border-box;min-height:34px;font:13px sans-serif}
+.fontPopup .fontMatchCount{position:static;padding:5px 0 0;border:0;font:12px sans-serif}
+.fontItems{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;position:relative}
+.fontPopup .fontItems button{white-space:normal;overflow-wrap:anywhere;min-height:40px}
+.fontPager{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;flex:none;border-top:1px solid var(--line,#ccc);background:var(--ui-panel,#fff);font:12px sans-serif}
+:is(#fontOptions,#role-fontOptions) .fontPager button{width:auto;min-height:32px;padding:5px 10px;border:1px solid var(--line,#ccc);border-radius:5px;text-align:center;white-space:nowrap;font:12px sans-serif}
+.fontPage{white-space:nowrap}

@@ -1,6 +1,7 @@
 (function(){
 'use strict';
 const common=['宋体','微软雅黑','等线','黑体','仿宋','楷体','Microsoft YaHei','SimSun','SimHei','PingFang SC','Heiti SC','Songti SC','Noto Sans CJK SC','Noto Serif CJK SC','Source Han Sans SC','Arial','Calibri','Times New Roman','Georgia','Verdana','Courier New'];
+let activeHide=null;
 let local=[],read=false,busy=false,message='常见候选不代表已安装；也可手动输入字体名称。';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stack=name=>JSON.stringify(name)+', "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "SimSun", sans-serif';
@@ -9,22 +10,31 @@ function html(value){return '<div class="fontPicker"><label for="fontChoice">字
 function mount(root=document,prefix='',onInput=null,fallback=()=> ''){const get=id=>root.querySelector('#'+prefix+id);const input=get('fontChoice'),list=get('fontOptions'),notice=get('fontNotice'),button=get('readLocalFonts');if(!input)return;
 const available=typeof window.queryLocalFonts==='function';button.disabled=busy||!available;notice.textContent=!available?'此浏览器或运行方式不支持读取字体。请使用候选或手动输入；离线编辑不受影响。':message;
 function preview(){get('fontSample').style.fontFamily=stack(input.value||fallback());const ok=!input.value||probable(input.value);get('fontAvailability').textContent=ok?'':'未检测到该字体，预览使用回退；原名称保留。';}
-const batchSize=60;let matches=[],offset=0;
+const picker=input.closest('.fontPicker'),batchSize=60;let matches=[],offset=0,watch=null,observer=null;
+list.className='fontPopup';list.setAttribute('role','region');list.setAttribute('aria-label','字体候选');
+const topLayer=typeof list.showPopover==='function';if(topLayer)list.setAttribute('popover','manual');
+list.innerHTML='<div class="fontSearchBar"><input class="fontSearch" aria-label="搜索全部字体" placeholder="搜索全部字体"><div class="fontMatchCount" role="status"></div></div><div class="fontItems" role="listbox" aria-label="字体列表"></div><div class="fontPager"><button type="button" class="fontPrev">上一页</button><span class="fontPage" aria-live="polite"></span><button type="button" class="fontNext">下一页</button></div>';
+const search=list.querySelector('.fontSearch'),items=list.querySelector('.fontItems'),info=list.querySelector('.fontMatchCount'),prev=list.querySelector('.fontPrev'),next=list.querySelector('.fontNext');
+function place(){if(list.hidden)return;if(!input.getClientRects().length){hide();return;}const r=input.getBoundingClientRect(),vw=window.visualViewport?.width||innerWidth,vh=window.visualViewport?.height||innerHeight,margin=8,gap=5,width=Math.min(Math.max(r.width+36,300),vw-2*margin),below=Math.min(vh-margin,input.closest('dialog')?.querySelector('#roleFontApply')?.getBoundingClientRect().top-gap||vh-margin)-r.bottom-gap,above=r.top-gap-margin,up=above>below&&below<300,room=Math.max(0,up?above:below),height=Math.min(420,Math.max(160,room),vh-2*margin);list.style.width=width+'px';list.style.height=height+'px';list.style.left=Math.max(margin,Math.min(r.left,vw-width-margin))+'px';list.style.top=Math.max(margin,Math.min(up?r.top-gap-height:r.bottom+gap,vh-height-margin))+'px';list.dataset.direction=up?'up':'down';}
+function open(){if(activeHide&&activeHide!==hide)activeHide();activeHide=hide;list.hidden=false;if(topLayer&&!list.matches(':popover-open'))list.showPopover();input.setAttribute('aria-expanded','true');place();if(watch)return;watch=new AbortController();const opts={capture:true,signal:watch.signal};window.addEventListener('resize',place,opts);document.addEventListener('scroll',place,opts);window.visualViewport?.addEventListener('resize',place,opts);document.addEventListener('pointerdown',e=>{if(!picker.contains(e.target)&&!list.contains(e.target))hide();},opts);document.addEventListener('focusin',e=>{if(!picker.contains(e.target)&&!list.contains(e.target))hide();},opts);observer=new MutationObserver(()=>{if(!input.isConnected||list.hidden)hide();});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});}
+function hide(){watch?.abort();watch=null;observer?.disconnect();observer=null;if(topLayer&&list.matches(':popover-open'))list.hidePopover();list.hidden=true;input.setAttribute('aria-expanded','false');if(activeHide===hide)activeHide=null;}
+list.hideFontPopup=hide;
 function draw(locate=false){
- list.replaceChildren();const info=document.createElement('div');info.className='fontMatchCount';info.setAttribute('role','status');info.textContent='匹配 '+matches.length+' 个字体'+(matches.length?' · '+(offset+1)+'–'+Math.min(offset+batchSize,matches.length):'');list.append(info);
- const nav=(text,next)=>{const b=document.createElement('button');b.type='button';b.className='fontBatch';b.textContent=text;b.onclick=()=>{offset=next;draw();list.querySelector('[role=option]')?.focus({preventScroll:true});};list.append(b);};
- if(offset)nav('上一批',Math.max(0,offset-batchSize));
+ items.replaceChildren();info.textContent='匹配 '+matches.length+' 个字体'+(matches.length?' · '+(offset+1)+'–'+Math.min(offset+batchSize,matches.length):'');
  const installed=new Set(local);
- for(const name of matches.slice(offset,offset+batchSize)){const item=document.createElement('button');item.type='button';item.role='option';item.setAttribute('aria-selected',String(name===input.value));item.textContent=name+' · 诗歌，它循环往复，就像那日升日落。';item.style.fontFamily=stack(name);item.title=(installed.has(name)?'本次已读取的字体家族':'常见候选，未确认安装')+'：'+name;item.onclick=()=>{input.value=name;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));hide();preview();input.focus();};list.append(item);}
- if(offset+batchSize<matches.length)nav('下一批',offset+batchSize);
- if(!matches.length){const tip=document.createElement('p');tip.textContent='没有匹配候选，可继续手动输入名称。';list.append(tip);}
- list.hidden=false;input.setAttribute('aria-expanded','true');list.scrollTop=0;
- if(locate){const selected=list.querySelector('[aria-selected=true]');if(selected)list.scrollTop=Math.max(0,selected.offsetTop-list.clientHeight/2);}
+ for(const name of matches.slice(offset,offset+batchSize)){const item=document.createElement('button');item.type='button';item.role='option';item.setAttribute('aria-selected',String(name===input.value));item.textContent=name+' · 诗歌，它循环往复，就像那日升日落。';item.style.fontFamily=stack(name);item.title=(installed.has(name)?'本次已读取的字体家族':'常见候选，未确认安装')+'：'+name;item.onclick=()=>{input.value=name;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));hide();preview();input.focus();};items.append(item);}
+ if(!matches.length)items.textContent='没有匹配候选，可继续手动输入名称。';
+ prev.disabled=offset===0;next.disabled=offset+batchSize>=matches.length;list.querySelector('.fontPage').textContent=(Math.floor(offset/batchSize)+1)+' / '+Math.max(1,Math.ceil(matches.length/batchSize));
+ open();items.scrollTop=0;if(locate){const selected=items.querySelector('[aria-selected=true]');if(selected)items.scrollTop=Math.max(0,selected.offsetTop-items.offsetTop-items.clientHeight/2);}
 }
-function show(all=false){const q=all?'':input.value.trim().toLocaleLowerCase();matches=[...new Set([...local,...common])].filter(n=>!q||n.toLocaleLowerCase().includes(q)).sort((a,b)=>a.localeCompare(b,'zh-CN-u-co-pinyin'));const index=all?matches.indexOf(input.value):-1;offset=index>=0?Math.floor(index/batchSize)*batchSize:0;draw(all);}
-function hide(){list.hidden=true;input.setAttribute('aria-expanded','false');}
-input.addEventListener('input',()=>{show();preview();if(onInput)onInput(input.value);});input.addEventListener('keydown',e=>{if(e.key==='Escape')hide();if(e.key==='ArrowDown'){e.preventDefault();if(list.hidden)show();list.querySelector('button')?.focus();}if(e.key==='Enter')hide();});list.onkeydown=e=>{const items=[...list.querySelectorAll('button')],i=items.indexOf(document.activeElement);if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();items[(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length]?.focus();}if(e.key==='Escape'){hide();input.focus();}};input.closest('.fontPicker').addEventListener('focusout',e=>{if(!e.currentTarget.contains(e.relatedTarget))hide();});get('fontExpand').onclick=()=>list.hidden?show(true):hide();
+function filter(q,locate=false){matches=[...new Set([...local,...common])].filter(n=>!q||n.toLocaleLowerCase().includes(q)).sort((a,b)=>a.localeCompare(b,'zh-CN-u-co-pinyin'));const index=locate?matches.indexOf(input.value):-1;offset=index>=0?Math.floor(index/batchSize)*batchSize:0;draw(locate);}
+function show(all=false){search.value=all?'':input.value;filter(search.value.trim().toLocaleLowerCase(),all);}
+search.oninput=()=>filter(search.value.trim().toLocaleLowerCase());
+prev.onclick=()=>{if(offset){offset-=batchSize;draw();}};next.onclick=()=>{if(offset+batchSize<matches.length){offset+=batchSize;draw();}};
+input.addEventListener('input',()=>{show();preview();if(onInput)onInput(input.value);});input.addEventListener('keydown',e=>{if(e.key==='Escape'&&!list.hidden)hide();if(e.key==='ArrowDown'){e.preventDefault();if(list.hidden)show();items.querySelector('button')?.focus();}if(e.key==='Enter')hide();});
+list.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();hide();input.focus();return;}if(e.target===search)return;const buttons=[...items.querySelectorAll('button')],i=buttons.indexOf(document.activeElement);if(i>=0&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}};
+get('fontExpand').onclick=()=>list.hidden?show(true):hide();
 button.onclick=async()=>{if(busy)return;busy=true;button.disabled=true;notice.textContent='正在请求本机字体授权…';try{const fonts=await window.queryLocalFonts();local=[...new Set(fonts.map(f=>f.family).filter(n=>typeof n==='string'&&n.trim()))];read=true;message=local.length?'已读取 '+local.length+' 个字体家族，仅保留在本次页面内存中。':'浏览器未返回可用字体。请使用候选或手动输入。';show(true);}catch(e){message=e.name==='NotAllowedError'?'未获字体读取授权。仍可使用候选或手动输入。':'当前浏览器或本地文件环境无法读取字体。仍可使用候选或手动输入。';}finally{busy=false;button.disabled=false;notice.textContent=message;preview();}};preview();}
 function roleHtml(value){return html(value).replace(/(id|for|aria-controls)="([^"]+)"/g,(_,attr,id)=>attr+'="role-'+id+'"').replace('data-setting="font"','').replace('placeholder="搜索或输入字体名"','placeholder="跟随全局字体"');}
-window.FontPicker={html,mount,stack,roleHtml};
+window.FontPicker={html,mount,stack,roleHtml,close(root=document){root.querySelectorAll('.fontPopup').forEach(p=>p.hideFontPopup?.());}};
 })();

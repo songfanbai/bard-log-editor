@@ -379,9 +379,9 @@ function roleFontDialog(id){
  const role=C.resolve(state,id);if(!role||role.hidden||role.deletedIdentity)return;
  protectDraft(()=>{const before=snapshot(),original=role.font||'',dialog=document.createElement('dialog');dialog.id='roleFontDialog';
  dialog.innerHTML='<h2>角色字体 · '+esc(label(role))+'</h2>'+FontPicker.roleHtml(original)+'<div class="row"><button id="roleFontFollow">跟随全局字体</button><button id="roleFontApply" class="primary">确认字体</button><button id="roleFontCancel">取消</button></div>';
- document.body.append(dialog);let done=false;const finish=commit=>{if(done)return;const input=dialog.querySelector('#role-fontChoice'),value=input.value.trim();if(commit&&value.length>100)return;done=true;role.font=commit?value:original;dialog.close();dialog.remove();if(commit&&role.font!==original){remember(before);mark();render();}else renderPreview();};
+ document.body.append(dialog);let done=false;const finish=commit=>{if(done)return;const input=dialog.querySelector('#role-fontChoice'),value=input.value.trim();if(commit&&value.length>100)return;done=true;role.font=commit?value:original;FontPicker.close(dialog);dialog.close();dialog.remove();if(commit&&role.font!==original){remember(before);mark();render();}else renderPreview();};
  FontPicker.mount(dialog,'role-',value=>{role.font=value.trim();renderPreview();},()=>state.settings.font);
- $('roleFontFollow').onclick=()=>{const input=$('role-fontChoice');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));$('role-fontOptions').hidden=true;input.setAttribute('aria-expanded','false');};
+ $('roleFontFollow').onclick=()=>{const input=$('role-fontChoice');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));FontPicker.close(dialog);};
  $('roleFontApply').onclick=()=>finish(true);$('roleFontCancel').onclick=()=>finish(false);dialog.oncancel=e=>{e.preventDefault();finish(false);};outsideClick(dialog,()=>finish(true));dialog.showModal();
  });
 }
